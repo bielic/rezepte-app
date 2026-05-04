@@ -1,0 +1,1687 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#f97316" />
+<meta name="description" content="KI-gestützter Rezept-Generator mit Foto-Erkennung von Zutaten" />
+<title>Rezept-Generator</title>
+<!-- PWA -->
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+<!-- iOS-specific -->
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Rezepte" />
+<meta name="mobile-web-app-capable" content="yes" />
+<style>
+  :root {
+    --bg: #fffaf3;
+    --surface: #ffffff;
+    --surface-2: #fff4e6;
+    --border: #f1d9b8;
+    --text: #2a1d10;
+    --muted: #7a6753;
+    --primary: #f97316;
+    --primary-dark: #c2410c;
+    --primary-soft: #ffedd5;
+    --success: #16a34a;
+    --danger: #dc2626;
+    --shadow: 0 6px 18px rgba(120, 60, 0, 0.08);
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a120a;
+      --surface: #261a10;
+      --surface-2: #321f12;
+      --border: #4a3322;
+      --text: #fff4e6;
+      --muted: #b69b7e;
+      --primary: #fb923c;
+      --primary-dark: #fdba74;
+      --primary-soft: #3a2010;
+      --shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  .app {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 16px;
+    padding-bottom: 80px;
+  }
+  header.top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    gap: 8px;
+  }
+  header.top h1 {
+    font-size: 1.6rem;
+    margin: 0;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+  header.top h1 .emoji { margin-right: 6px; }
+  .lang-toggle {
+    display: inline-flex;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 3px;
+    font-size: 0.85rem;
+  }
+  .lang-toggle button {
+    border: none;
+    background: transparent;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-weight: 600;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .lang-toggle button.active {
+    background: var(--primary);
+    color: white;
+  }
+  .provider-toggle {
+    display: flex;
+    gap: 4px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 3px;
+    margin-bottom: 12px;
+  }
+  .provider-toggle button {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-weight: 600;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 0.88rem;
+    line-height: 1.2;
+  }
+  .provider-toggle button.active {
+    background: var(--primary);
+    color: white;
+  }
+  .provider-toggle button .badge-free {
+    display: inline-block;
+    background: var(--success);
+    color: white;
+    font-size: 0.65rem;
+    padding: 1px 6px;
+    border-radius: 999px;
+    margin-left: 4px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .error-box {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+    padding: 12px 14px;
+    border-radius: 12px;
+    margin-top: 12px;
+    font-size: 0.92rem;
+    line-height: 1.5;
+  }
+  .error-box strong { display: block; margin-bottom: 4px; }
+  .error-box a {
+    color: #991b1b;
+    font-weight: 600;
+    text-decoration: underline;
+  }
+  .error-box .switch-link {
+    display: inline-block;
+    margin-top: 8px;
+    color: #991b1b;
+    cursor: pointer;
+    font-weight: 600;
+    text-decoration: underline;
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: inherit;
+  }
+  @media (prefers-color-scheme: dark) {
+    .error-box { background: #450a0a; color: #fecaca; border-color: #7f1d1d; }
+    .error-box a, .error-box .switch-link { color: #fecaca; }
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow);
+  }
+  .card h2 {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin: 0 0 12px;
+    font-weight: 700;
+  }
+  .api-row { display: flex; gap: 8px; align-items: center; }
+  .api-row input {
+    flex: 1;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 0.95rem;
+  }
+  .api-row input:focus { outline: 2px solid var(--primary); border-color: var(--primary); }
+  .api-status {
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-top: 8px;
+  }
+  .api-status.ok { color: var(--success); }
+  .api-status.err { color: var(--danger); }
+  .api-help {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-top: 8px;
+    line-height: 1.4;
+  }
+  .api-help a { color: var(--primary); }
+  .ingredient-input {
+    display: flex;
+    gap: 8px;
+  }
+  .ingredient-input input {
+    flex: 1;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 0.95rem;
+  }
+  .ingredient-input input:focus { outline: 2px solid var(--primary); border-color: var(--primary); }
+  .btn {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 10px;
+    background: var(--primary);
+    color: white;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn:hover { background: var(--primary-dark); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn.ghost {
+    background: var(--surface-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn.ghost:hover { background: var(--primary-soft); }
+  .btn.lg {
+    width: 100%;
+    padding: 16px;
+    font-size: 1.05rem;
+    border-radius: 12px;
+  }
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 12px;
+    min-height: 4px;
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px 5px 12px;
+    background: var(--primary-soft);
+    color: var(--primary-dark);
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+  .chip .x {
+    cursor: pointer;
+    font-weight: 800;
+    line-height: 1;
+    opacity: 0.6;
+    padding: 0 2px;
+  }
+  .chip .x:hover { opacity: 1; }
+  .chip.from-photo {
+    background: #dbeafe;
+    color: #1e40af;
+  }
+  @media (prefers-color-scheme: dark) {
+    .chip.from-photo { background: #1e3a8a; color: #bfdbfe; }
+  }
+  .photo-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+  }
+  .photo-row label.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .photo-row input[type="file"] { display: none; }
+  .photo-thumbs {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .photo-thumbs .thumb {
+    position: relative;
+    aspect-ratio: 1;
+    background: var(--surface-2);
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .photo-thumbs .thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .photo-thumbs .thumb .rm {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.6);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+  }
+  .photo-thumbs .thumb .badge {
+    position: absolute;
+    bottom: 4px;
+    left: 4px;
+    background: rgba(0,0,0,0.6);
+    color: white;
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 6px;
+  }
+  .photo-thumbs .thumb .badge.scanning::before {
+    content: "";
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border: 2px solid white;
+    border-top-color: transparent;
+    border-radius: 50%;
+    margin-right: 4px;
+    animation: spin 0.8s linear infinite;
+    vertical-align: -1px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .option-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .option-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 4px 0;
+  }
+  .option-row .label {
+    font-weight: 500;
+    font-size: 0.95rem;
+  }
+  .toggle-pill {
+    display: inline-flex;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 3px;
+    font-size: 0.85rem;
+  }
+  .toggle-pill button {
+    border: none;
+    background: transparent;
+    padding: 6px 14px;
+    border-radius: 999px;
+    color: var(--muted);
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .toggle-pill button.active {
+    background: var(--primary);
+    color: white;
+  }
+  .audience-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+  .audience-grid button {
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text);
+    padding: 10px 6px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    line-height: 1.2;
+    text-align: center;
+    font-weight: 500;
+  }
+  .audience-grid button.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+  }
+  .audience-grid button .age {
+    display: block;
+    font-size: 0.7rem;
+    opacity: 0.8;
+    margin-top: 2px;
+  }
+
+  .stepper {
+    display: inline-flex;
+    align-items: center;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .stepper button {
+    border: none;
+    background: transparent;
+    width: 38px;
+    height: 38px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--primary);
+    cursor: pointer;
+    line-height: 1;
+  }
+  .stepper button:hover { background: var(--primary-soft); }
+  .stepper button:disabled { color: var(--muted); cursor: not-allowed; opacity: 0.5; }
+  .stepper .val {
+    min-width: 36px;
+    text-align: center;
+    font-weight: 700;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  .portion-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 0;
+  }
+  .portion-row + .portion-row {
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+    margin-top: 6px;
+  }
+  .portion-row .label-block {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+  }
+  .portion-row .label-block .sub {
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .recipe-output {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-top: 14px;
+    box-shadow: var(--shadow);
+  }
+  .recipe-output h2.title {
+    margin: 0 0 6px;
+    font-size: 1.5rem;
+    line-height: 1.15;
+    text-transform: none;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    font-weight: 700;
+  }
+  .recipe-output .subtitle {
+    color: var(--muted);
+    font-size: 0.95rem;
+    margin-bottom: 14px;
+  }
+  .recipe-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+  .recipe-meta .pill {
+    background: var(--primary-soft);
+    color: var(--primary-dark);
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+  .recipe-section {
+    margin-top: 18px;
+  }
+  .recipe-section h3 {
+    font-size: 1rem;
+    margin: 0 0 8px;
+    color: var(--primary-dark);
+    font-weight: 700;
+  }
+  .recipe-section ul, .recipe-section ol { margin: 0; padding-left: 22px; }
+  .recipe-section li { margin-bottom: 6px; }
+  .recipe-tip {
+    background: var(--primary-soft);
+    border-left: 3px solid var(--primary);
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-top: 14px;
+    font-size: 0.92rem;
+    color: var(--text);
+  }
+  .recipe-tip strong { color: var(--primary-dark); }
+
+  .empty-hint {
+    color: var(--muted);
+    font-size: 0.85rem;
+    font-style: italic;
+  }
+  .loader {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 40px 20px;
+    color: var(--muted);
+  }
+  .loader::before {
+    content: "";
+    width: 18px;
+    height: 18px;
+    border: 3px solid var(--primary);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  .error {
+    background: #fee2e2;
+    color: #991b1b;
+    padding: 12px;
+    border-radius: 10px;
+    margin-top: 12px;
+    font-size: 0.9rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    .error { background: #450a0a; color: #fecaca; }
+  }
+  .footer-note {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.75rem;
+    margin-top: 24px;
+  }
+  details summary { cursor: pointer; font-size: 0.85rem; color: var(--muted); }
+  details[open] summary { margin-bottom: 8px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <h1><span class="emoji">🍳</span><span data-i18n="appTitle">Rezept-Generator</span></h1>
+    <div class="lang-toggle" id="langToggle">
+      <button data-lang="de" class="active">DE</button>
+      <button data-lang="en">EN</button>
+    </div>
+  </header>
+
+  <!-- API Key -->
+  <section class="card">
+    <details id="apiDetails">
+      <summary data-i18n="apiSummary">🔑 KI-Anbieter & API-Schlüssel</summary>
+      <div class="provider-toggle" id="providerToggle">
+        <button data-provider="claude" class="active">
+          <span data-i18n="providerClaude">Claude</span>
+          <span style="font-size:0.7rem;opacity:0.85;display:block;margin-top:2px" data-i18n="providerClaudeNote">kostenpflichtig</span>
+        </button>
+        <button data-provider="gemini">
+          <span data-i18n="providerGemini">Gemini</span>
+          <span class="badge-free" data-i18n="freeBadge">GRATIS</span>
+          <span style="font-size:0.7rem;opacity:0.85;display:block;margin-top:2px" data-i18n="providerGeminiNote">Google · gratis Tier</span>
+        </button>
+      </div>
+      <div class="api-row">
+        <input type="password" id="apiKey" placeholder="sk-ant-..." autocomplete="off" />
+        <button class="btn ghost" id="saveKey" data-i18n="save">Speichern</button>
+      </div>
+      <div class="api-status" id="apiStatus"></div>
+      <div class="api-help" id="apiHelp"></div>
+    </details>
+  </section>
+
+  <!-- Ingredients -->
+  <section class="card">
+    <h2 data-i18n="ingredients">Zutaten</h2>
+    <div class="ingredient-input">
+      <input type="text" id="ingredientInput" data-i18n-placeholder="ingredientPh" placeholder="z.B. Tomaten, Pasta, Käse..." />
+      <button class="btn" id="addIngredient" data-i18n="add">+</button>
+    </div>
+
+    <div class="photo-row">
+      <label class="btn ghost" for="cameraInput">📷 <span data-i18n="takePhoto">Foto</span></label>
+      <input type="file" id="cameraInput" accept="image/*" capture="environment" multiple />
+      <label class="btn ghost" for="galleryInput">🖼️ <span data-i18n="gallery">Galerie</span></label>
+      <input type="file" id="galleryInput" accept="image/*" multiple />
+    </div>
+
+    <div class="photo-thumbs" id="photoThumbs"></div>
+    <div class="chips" id="chips"></div>
+    <div class="empty-hint" id="ingredientHint" data-i18n="noIngredients">Noch keine Zutaten – tippe sie ein oder mache ein Foto vom Kühlschrank.</div>
+  </section>
+
+  <!-- Audience -->
+  <section class="card">
+    <h2 data-i18n="audience">Zielpublikum</h2>
+    <div class="audience-grid" id="audienceGrid">
+      <button data-audience="toddler"><span data-i18n="toddler">Kleinkind</span><span class="age">1–3</span></button>
+      <button data-audience="preschool"><span data-i18n="preschool">Vorschule</span><span class="age">4–6</span></button>
+      <button data-audience="school"><span data-i18n="school">Schulkind</span><span class="age">7–10</span></button>
+      <button data-audience="teen"><span data-i18n="teen">Teenager</span><span class="age">11–14</span></button>
+      <button data-audience="adult" class="active"><span data-i18n="adult">Erwachsene</span><span class="age">15+</span></button>
+      <button data-audience="family"><span data-i18n="family">Familie</span><span class="age">mix</span></button>
+    </div>
+  </section>
+
+  <!-- Portions -->
+  <section class="card" id="portionsCard">
+    <h2 data-i18n="portionsTitle">Anzahl Portionen</h2>
+    <div id="adultOnlyView">
+      <div class="portion-row">
+        <span class="label-block"><span data-i18n="people">Personen</span></span>
+        <div class="stepper" data-portion="adults">
+          <button type="button" data-step="-1">−</button>
+          <span class="val">2</span>
+          <button type="button" data-step="1">+</button>
+        </div>
+      </div>
+    </div>
+    <div id="mixedView" style="display:none">
+      <div class="portion-row">
+        <span class="label-block">
+          <span data-i18n="kids">Kinder</span>
+          <span class="sub" id="kidsAgeLabel"></span>
+        </span>
+        <div class="stepper" data-portion="kids">
+          <button type="button" data-step="-1">−</button>
+          <span class="val">2</span>
+          <button type="button" data-step="1">+</button>
+        </div>
+      </div>
+      <div class="portion-row">
+        <span class="label-block"><span data-i18n="adultsLabel">Erwachsene</span></span>
+        <div class="stepper" data-portion="adults">
+          <button type="button" data-step="-1">−</button>
+          <span class="val">2</span>
+          <button type="button" data-step="1">+</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Options -->
+  <section class="card">
+    <h2 data-i18n="options">Optionen</h2>
+    <div class="option-grid">
+      <div class="option-row">
+        <span class="label" data-i18n="optTemp">Temperatur</span>
+        <div class="toggle-pill" data-option="temp">
+          <button data-value="warm" class="active" data-i18n="warm">Warm</button>
+          <button data-value="cold" data-i18n="cold">Kalt</button>
+        </div>
+      </div>
+      <div class="option-row">
+        <span class="label" data-i18n="optEffort">Aufwand</span>
+        <div class="toggle-pill" data-option="effort">
+          <button data-value="simple" class="active" data-i18n="simple">Einfach</button>
+          <button data-value="elaborate" data-i18n="elaborate">Aufwändig</button>
+        </div>
+      </div>
+      <div class="option-row">
+        <span class="label" data-i18n="optTime">Zeit</span>
+        <div class="toggle-pill" data-option="time">
+          <button data-value="quick" class="active" data-i18n="quick">Schnell</button>
+          <button data-value="long" data-i18n="long">Zeitintensiv</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <button class="btn lg" id="generateBtn" data-i18n="generate">✨ Rezept generieren</button>
+
+  <div id="output"></div>
+
+  <div class="footer-note" data-i18n="footer">Lokal in deinem Browser. Bilder & Daten verlassen dein Gerät nur für API-Aufrufe an Anthropic.</div>
+</div>
+
+<script>
+  // ---------- i18n ----------
+  const I18N = {
+    de: {
+      appTitle: "Rezept-Generator",
+      apiSummary: "🔑 KI-Anbieter & API-Schlüssel",
+      providerClaude: "Claude",
+      providerClaudeNote: "kostenpflichtig",
+      providerGemini: "Gemini",
+      providerGeminiNote: "Google · gratis Tier",
+      freeBadge: "GRATIS",
+      save: "Speichern",
+      saved: "Gespeichert ✓",
+      apiHelpClaude: 'Anthropic-Schlüssel wird nur lokal gespeichert. Hol dir einen Schlüssel auf <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a> (Pay-as-you-go, ca. 1–3 Cent pro Rezept).',
+      apiHelpGemini: 'Google-Schlüssel wird nur lokal gespeichert. Hol dir einen <strong>kostenlosen</strong> Schlüssel auf <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> (grosszügiges Tageslimit, keine Kreditkarte nötig).',
+      placeholderClaude: "sk-ant-...",
+      placeholderGemini: "AIza...",
+      // Friendly error messages
+      errCreditTitle: "Anthropic-Konto hat kein Guthaben",
+      errCreditMsg: 'Dein Claude-API-Konto braucht aufgeladenes Guthaben (Pay-as-you-go). Lade Credits auf:',
+      errCreditLink: "console.anthropic.com/settings/billing",
+      errSwitchToGemini: "→ Stattdessen auf Gemini (gratis) wechseln",
+      errAuthTitle: "Ungültiger API-Schlüssel",
+      errAuthMsg: "Der eingegebene Schlüssel wurde nicht akzeptiert. Bitte prüfe ihn oben oder erstelle einen neuen.",
+      errQuotaTitle: "Tageslimit erreicht",
+      errQuotaMsg: "Das gratis Tageslimit von Gemini ist aufgebraucht. Versuche es morgen wieder oder wechsle zu Claude.",
+      errSwitchToClaude: "→ Auf Claude wechseln",
+      errRateTitle: "Zu viele Anfragen",
+      errRateMsg: "Bitte warte einen Moment und versuche es erneut.",
+      errNetworkTitle: "Netzwerkfehler",
+      errNetworkMsg: "Verbindung zum KI-Anbieter fehlgeschlagen. Prüfe deine Internetverbindung.",
+      errGenericTitle: "Ein Fehler ist aufgetreten",
+      ingredients: "Zutaten",
+      ingredientPh: "z.B. Tomaten, Pasta, Käse...",
+      add: "+",
+      takePhoto: "Foto",
+      gallery: "Galerie",
+      noIngredients: "Noch keine Zutaten – tippe sie ein oder mache ein Foto vom Kühlschrank.",
+      audience: "Zielpublikum",
+      toddler: "Kleinkind",
+      preschool: "Vorschule",
+      school: "Schulkind",
+      teen: "Teenager",
+      adult: "Erwachsene",
+      family: "Familie",
+      portionsTitle: "Anzahl Portionen",
+      people: "Personen",
+      kids: "Kinder",
+      adultsLabel: "Erwachsene",
+      ageRange_toddler: "1–3 Jahre",
+      ageRange_preschool: "4–6 Jahre",
+      ageRange_school: "7–10 Jahre",
+      ageRange_teen: "11–14 Jahre",
+      ageRange_family: "verschiedene Alter",
+      options: "Optionen",
+      optTemp: "Temperatur",
+      warm: "Warm",
+      cold: "Kalt",
+      optEffort: "Aufwand",
+      simple: "Einfach",
+      elaborate: "Aufwändig",
+      optTime: "Zeit",
+      quick: "Schnell",
+      long: "Zeitintensiv",
+      generate: "✨ Rezept generieren",
+      generating: "Rezept wird erstellt…",
+      scanning: "Analysiere…",
+      scanned: "fertig",
+      footer: "Lokal in deinem Browser. Bilder & Daten verlassen dein Gerät nur für API-Aufrufe an Anthropic.",
+      noKeyError: "Bitte zuerst den Anthropic API-Schlüssel oben eingeben.",
+      noIngredientsError: "Füge mindestens eine Zutat hinzu (manuell oder per Foto).",
+      apiError: "API-Fehler",
+      ingredientsLabel: "Zutaten",
+      stepsLabel: "Zubereitung",
+      tipLabel: "Tipp",
+      prepTime: "Vorbereitung",
+      cookTime: "Kochzeit",
+      difficulty: "Schwierigkeit",
+      servings: "Portionen"
+    },
+    en: {
+      appTitle: "Recipe Generator",
+      apiSummary: "🔑 AI provider & API key",
+      providerClaude: "Claude",
+      providerClaudeNote: "paid",
+      providerGemini: "Gemini",
+      providerGeminiNote: "Google · free tier",
+      freeBadge: "FREE",
+      save: "Save",
+      saved: "Saved ✓",
+      apiHelpClaude: 'The Anthropic key is only stored locally. Get one at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a> (pay-as-you-go, ~1–3 cents per recipe).',
+      apiHelpGemini: 'The Google key is only stored locally. Get a <strong>free</strong> key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> (generous daily limit, no credit card required).',
+      placeholderClaude: "sk-ant-...",
+      placeholderGemini: "AIza...",
+      errCreditTitle: "Anthropic account out of credit",
+      errCreditMsg: "Your Claude API account needs prepaid credit (pay-as-you-go). Top up here:",
+      errCreditLink: "console.anthropic.com/settings/billing",
+      errSwitchToGemini: "→ Switch to Gemini (free) instead",
+      errAuthTitle: "Invalid API key",
+      errAuthMsg: "The key you entered was rejected. Please check it above or create a new one.",
+      errQuotaTitle: "Daily limit reached",
+      errQuotaMsg: "Gemini's free daily limit is exhausted. Try again tomorrow or switch to Claude.",
+      errSwitchToClaude: "→ Switch to Claude",
+      errRateTitle: "Too many requests",
+      errRateMsg: "Please wait a moment and try again.",
+      errNetworkTitle: "Network error",
+      errNetworkMsg: "Couldn't reach the AI provider. Check your internet connection.",
+      errGenericTitle: "Something went wrong",
+      ingredients: "Ingredients",
+      ingredientPh: "e.g. tomatoes, pasta, cheese...",
+      add: "+",
+      takePhoto: "Photo",
+      gallery: "Gallery",
+      noIngredients: "No ingredients yet – type them in or snap a photo of your fridge.",
+      audience: "Audience",
+      toddler: "Toddler",
+      preschool: "Preschool",
+      school: "School age",
+      teen: "Teen",
+      adult: "Adults",
+      family: "Family",
+      portionsTitle: "Servings",
+      people: "People",
+      kids: "Kids",
+      adultsLabel: "Adults",
+      ageRange_toddler: "1–3 years",
+      ageRange_preschool: "4–6 years",
+      ageRange_school: "7–10 years",
+      ageRange_teen: "11–14 years",
+      ageRange_family: "mixed ages",
+      options: "Options",
+      optTemp: "Temperature",
+      warm: "Warm",
+      cold: "Cold",
+      optEffort: "Effort",
+      simple: "Simple",
+      elaborate: "Elaborate",
+      optTime: "Time",
+      quick: "Quick",
+      long: "Time-rich",
+      generate: "✨ Generate recipe",
+      generating: "Cooking up a recipe…",
+      scanning: "Scanning…",
+      scanned: "done",
+      footer: "Runs locally in your browser. Images & data only leave your device when calling the Anthropic API.",
+      noKeyError: "Please enter your Anthropic API key above first.",
+      noIngredientsError: "Add at least one ingredient (manually or via photo).",
+      apiError: "API error",
+      ingredientsLabel: "Ingredients",
+      stepsLabel: "Steps",
+      tipLabel: "Tip",
+      prepTime: "Prep",
+      cookTime: "Cook",
+      difficulty: "Difficulty",
+      servings: "Servings"
+    }
+  };
+
+  let lang = localStorage.getItem("rg.lang") || (navigator.language.startsWith("en") ? "en" : "de");
+
+  function applyLang() {
+    document.documentElement.lang = lang;
+    document.querySelectorAll("[data-i18n]").forEach(el => {
+      const key = el.getAttribute("data-i18n");
+      if (I18N[lang][key]) el.innerHTML = I18N[lang][key];
+    });
+    document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
+      const key = el.getAttribute("data-i18n-placeholder");
+      if (I18N[lang][key]) el.placeholder = I18N[lang][key];
+    });
+    document.querySelectorAll("#langToggle button").forEach(b => {
+      b.classList.toggle("active", b.dataset.lang === lang);
+    });
+    renderChips();
+    renderHint();
+    if (typeof applyProviderUi === "function") applyProviderUi();
+    if (typeof renderPortionsUI === "function") renderPortionsUI();
+  }
+
+  document.querySelectorAll("#langToggle button").forEach(b => {
+    b.addEventListener("click", () => {
+      lang = b.dataset.lang;
+      localStorage.setItem("rg.lang", lang);
+      applyLang();
+    });
+  });
+
+  // ---------- Provider & API key ----------
+  let provider = localStorage.getItem("rg.provider") || "gemini"; // default to free option
+  const apiKeyInput = document.getElementById("apiKey");
+  const saveKeyBtn = document.getElementById("saveKey");
+  const apiStatus = document.getElementById("apiStatus");
+  const apiDetails = document.getElementById("apiDetails");
+  const apiHelpEl = document.getElementById("apiHelp");
+
+  function keyStorageKey() {
+    return provider === "gemini" ? "rg.geminiKey" : "rg.claudeKey";
+  }
+  function getStoredKey(p = provider) {
+    return localStorage.getItem(p === "gemini" ? "rg.geminiKey" : "rg.claudeKey");
+  }
+
+  function applyProviderUi() {
+    document.querySelectorAll("#providerToggle button").forEach(b => {
+      b.classList.toggle("active", b.dataset.provider === provider);
+    });
+    apiKeyInput.placeholder = I18N[lang][provider === "gemini" ? "placeholderGemini" : "placeholderClaude"];
+    apiHelpEl.innerHTML = I18N[lang][provider === "gemini" ? "apiHelpGemini" : "apiHelpClaude"];
+    const k = getStoredKey();
+    apiKeyInput.value = k || "";
+    if (k) {
+      apiStatus.textContent = I18N[lang].saved;
+      apiStatus.className = "api-status ok";
+    } else {
+      apiStatus.textContent = "";
+      apiStatus.className = "api-status";
+    }
+  }
+
+  document.querySelectorAll("#providerToggle button").forEach(b => {
+    b.addEventListener("click", () => {
+      provider = b.dataset.provider;
+      localStorage.setItem("rg.provider", provider);
+      applyProviderUi();
+    });
+  });
+
+  applyProviderUi();
+  if (!getStoredKey()) {
+    apiDetails.open = true;
+  }
+
+  saveKeyBtn.addEventListener("click", () => {
+    const k = apiKeyInput.value.trim();
+    if (k) {
+      localStorage.setItem(keyStorageKey(), k);
+      apiStatus.textContent = I18N[lang].saved;
+      apiStatus.className = "api-status ok";
+      apiDetails.open = false;
+    } else {
+      localStorage.removeItem(keyStorageKey());
+      apiStatus.textContent = "";
+    }
+  });
+
+  function switchProvider(newProvider) {
+    provider = newProvider;
+    localStorage.setItem("rg.provider", provider);
+    applyProviderUi();
+    apiDetails.open = !getStoredKey();
+    apiDetails.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+  window.__switchProvider = switchProvider;
+
+  // ---------- Ingredients state ----------
+  const state = {
+    manual: [],
+    photo: [], // {name, fromImageId}
+    photos: [], // {id, dataUrl, status: 'pending'|'scanning'|'done'|'err'}
+    audience: "adult",
+    portions: { adults: 2, kids: 2 },
+    options: { temp: "warm", effort: "simple", time: "quick" }
+  };
+
+  const chipsEl = document.getElementById("chips");
+  const hintEl = document.getElementById("ingredientHint");
+
+  function renderChips() {
+    chipsEl.innerHTML = "";
+    state.manual.forEach((ing, i) => {
+      const c = document.createElement("span");
+      c.className = "chip";
+      c.innerHTML = `${escapeHtml(ing)} <span class="x" data-rm-manual="${i}">✕</span>`;
+      chipsEl.appendChild(c);
+    });
+    state.photo.forEach((p, i) => {
+      const c = document.createElement("span");
+      c.className = "chip from-photo";
+      c.innerHTML = `📷 ${escapeHtml(p.name)} <span class="x" data-rm-photo="${i}">✕</span>`;
+      chipsEl.appendChild(c);
+    });
+    chipsEl.querySelectorAll("[data-rm-manual]").forEach(x =>
+      x.addEventListener("click", () => {
+        state.manual.splice(parseInt(x.dataset.rmManual), 1);
+        renderChips(); renderHint();
+      })
+    );
+    chipsEl.querySelectorAll("[data-rm-photo]").forEach(x =>
+      x.addEventListener("click", () => {
+        state.photo.splice(parseInt(x.dataset.rmPhoto), 1);
+        renderChips(); renderHint();
+      })
+    );
+  }
+
+  function renderHint() {
+    if (state.manual.length || state.photo.length) {
+      hintEl.style.display = "none";
+    } else {
+      hintEl.style.display = "block";
+    }
+  }
+
+  function addIngredientFromInput() {
+    const v = document.getElementById("ingredientInput").value.trim();
+    if (!v) return;
+    // split by comma if multiple
+    v.split(/[,;]/).map(s => s.trim()).filter(Boolean).forEach(s => state.manual.push(s));
+    document.getElementById("ingredientInput").value = "";
+    renderChips(); renderHint();
+  }
+
+  document.getElementById("addIngredient").addEventListener("click", addIngredientFromInput);
+  document.getElementById("ingredientInput").addEventListener("keydown", e => {
+    if (e.key === "Enter") { e.preventDefault(); addIngredientFromInput(); }
+  });
+
+  // ---------- Photos ----------
+  const thumbsEl = document.getElementById("photoThumbs");
+  let nextPhotoId = 1;
+
+  function renderThumbs() {
+    thumbsEl.innerHTML = "";
+    state.photos.forEach(p => {
+      const t = document.createElement("div");
+      t.className = "thumb";
+      t.innerHTML = `<img src="${p.dataUrl}" alt=""><span class="rm" data-rm-pic="${p.id}">×</span>` +
+        (p.status === "scanning" ? `<span class="badge scanning">${I18N[lang].scanning}</span>` :
+         p.status === "done" ? `<span class="badge">✓ ${I18N[lang].scanned}</span>` :
+         p.status === "err" ? `<span class="badge">!</span>` : "");
+      thumbsEl.appendChild(t);
+    });
+    thumbsEl.querySelectorAll("[data-rm-pic]").forEach(x =>
+      x.addEventListener("click", () => {
+        const id = parseInt(x.dataset.rmPic);
+        state.photos = state.photos.filter(p => p.id !== id);
+        state.photo = state.photo.filter(p => p.fromImageId !== id);
+        renderThumbs(); renderChips(); renderHint();
+      })
+    );
+  }
+
+  async function fileToCompressedDataUrl(file, maxSize = 1280, quality = 0.78) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          let { width, height } = img;
+          const scale = Math.min(1, maxSize / Math.max(width, height));
+          width = Math.round(width * scale);
+          height = Math.round(height * scale);
+          const c = document.createElement("canvas");
+          c.width = width; c.height = height;
+          c.getContext("2d").drawImage(img, 0, 0, width, height);
+          resolve(c.toDataURL("image/jpeg", quality));
+        };
+        img.onerror = reject;
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleFiles(files) {
+    for (const file of files) {
+      const id = nextPhotoId++;
+      try {
+        const dataUrl = await fileToCompressedDataUrl(file);
+        state.photos.push({ id, dataUrl, status: "scanning" });
+        renderThumbs();
+        analyzePhoto(id, dataUrl);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }
+
+  document.getElementById("cameraInput").addEventListener("change", e => {
+    handleFiles(e.target.files);
+    e.target.value = "";
+  });
+  document.getElementById("galleryInput").addEventListener("change", e => {
+    handleFiles(e.target.files);
+    e.target.value = "";
+  });
+
+  // ---------- Audience & Options ----------
+  document.querySelectorAll("#audienceGrid button").forEach(b => {
+    b.addEventListener("click", () => {
+      document.querySelectorAll("#audienceGrid button").forEach(x => x.classList.remove("active"));
+      b.classList.add("active");
+      state.audience = b.dataset.audience;
+      renderPortionsUI();
+    });
+  });
+
+  // ---------- Portions ----------
+  const PORTION_LIMITS = { adults: { min: 0, max: 12 }, kids: { min: 1, max: 8 } };
+
+  function isKidAudience() {
+    return ["toddler", "preschool", "school", "teen", "family"].includes(state.audience);
+  }
+
+  function renderPortionsUI() {
+    const mixed = isKidAudience();
+    document.getElementById("adultOnlyView").style.display = mixed ? "none" : "block";
+    document.getElementById("mixedView").style.display = mixed ? "block" : "none";
+
+    // Update kids age sub-label
+    const sub = document.getElementById("kidsAgeLabel");
+    if (state.audience === "adult") sub.textContent = "";
+    else sub.textContent = I18N[lang]["ageRange_" + state.audience] || "";
+
+    // Sync stepper values
+    document.querySelectorAll('.stepper').forEach(s => {
+      const portion = s.dataset.portion;
+      const val = state.portions[portion];
+      s.querySelector(".val").textContent = val;
+      const minus = s.querySelector('[data-step="-1"]');
+      const plus = s.querySelector('[data-step="1"]');
+      // For mixed: kids min is at least 1 (otherwise switch back to adult-only by changing audience)
+      // For adult-only audience: adults min is 1 (need at least 1 person)
+      let min = PORTION_LIMITS[portion].min;
+      if (portion === "adults" && !mixed) min = 1;
+      const max = PORTION_LIMITS[portion].max;
+      minus.disabled = val <= min;
+      plus.disabled = val >= max;
+    });
+  }
+
+  function bumpPortion(portion, delta) {
+    const mixed = isKidAudience();
+    let min = PORTION_LIMITS[portion].min;
+    if (portion === "adults" && !mixed) min = 1;
+    const max = PORTION_LIMITS[portion].max;
+    const next = Math.max(min, Math.min(max, state.portions[portion] + delta));
+    state.portions[portion] = next;
+    renderPortionsUI();
+  }
+
+  document.querySelectorAll(".stepper").forEach(s => {
+    const portion = s.dataset.portion;
+    s.querySelectorAll("button[data-step]").forEach(b => {
+      b.addEventListener("click", () => bumpPortion(portion, parseInt(b.dataset.step, 10)));
+    });
+  });
+
+  renderPortionsUI();
+
+  document.querySelectorAll(".toggle-pill").forEach(group => {
+    const opt = group.dataset.option;
+    group.querySelectorAll("button").forEach(b => {
+      b.addEventListener("click", () => {
+        group.querySelectorAll("button").forEach(x => x.classList.remove("active"));
+        b.classList.add("active");
+        state.options[opt] = b.dataset.value;
+      });
+    });
+  });
+
+  // ---------- AI Provider Abstraction ----------
+  const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
+  const CLAUDE_MODEL = "claude-sonnet-4-6";
+  const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models";
+  const GEMINI_MODEL = "gemini-2.5-flash";
+  const GEMINI_FALLBACK_MODEL = "gemini-2.0-flash";
+
+  // Custom error class so we can attach metadata
+  class AIError extends Error {
+    constructor(kind, message, raw) {
+      super(message);
+      this.kind = kind; // 'credit' | 'auth' | 'quota' | 'rate' | 'network' | 'generic'
+      this.raw = raw;
+    }
+  }
+
+  /**
+   * Unified call. `parts` is an array of {type:'text', text} or {type:'image', data:base64}
+   * Set `jsonMode: true` to request JSON output (Gemini will use structured output).
+   */
+  async function callAI({ parts, system, maxTokens = 1500, jsonMode = false }) {
+    const key = getStoredKey();
+    if (!key) throw new AIError("auth", I18N[lang].noKeyError);
+    if (provider === "gemini") return callGemini(key, parts, system, maxTokens, null, jsonMode);
+    return callClaude(key, parts, system, maxTokens);
+  }
+
+  async function callClaude(key, parts, system, maxTokens) {
+    const content = parts.map(p => {
+      if (p.type === "image") return { type: "image", source: { type: "base64", media_type: "image/jpeg", data: p.data } };
+      return { type: "text", text: p.text };
+    });
+    const body = { model: CLAUDE_MODEL, max_tokens: maxTokens, messages: [{ role: "user", content }] };
+    if (system) body.system = system;
+    let res;
+    try {
+      res = await fetch(ANTHROPIC_URL, {
+        method: "POST",
+        headers: {
+          "x-api-key": key,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true",
+          "content-type": "application/json"
+        },
+        body: JSON.stringify(body)
+      });
+    } catch (e) {
+      throw new AIError("network", e.message, e);
+    }
+    if (!res.ok) {
+      const raw = await res.text();
+      throw classifyClaudeError(res.status, raw);
+    }
+    const data = await res.json();
+    return data.content?.find(c => c.type === "text")?.text || "";
+  }
+
+  function classifyClaudeError(status, raw) {
+    const lower = raw.toLowerCase();
+    if (lower.includes("credit balance") || lower.includes("billing") || lower.includes("insufficient")) {
+      return new AIError("credit", "Anthropic credit balance too low", raw);
+    }
+    if (status === 401 || lower.includes("invalid x-api-key") || lower.includes("authentication")) {
+      return new AIError("auth", "Invalid Anthropic key", raw);
+    }
+    if (status === 429) {
+      return new AIError("rate", "Rate limited", raw);
+    }
+    return new AIError("generic", `HTTP ${status}: ${raw.slice(0, 300)}`, raw);
+  }
+
+  async function callGemini(key, parts, system, maxTokens, modelOverride, jsonMode) {
+    const model = modelOverride || GEMINI_MODEL;
+    const url = `${GEMINI_URL}/${model}:generateContent?key=${encodeURIComponent(key)}`;
+    const geminiParts = parts.map(p => {
+      if (p.type === "image") return { inline_data: { mime_type: "image/jpeg", data: p.data } };
+      return { text: p.text };
+    });
+    const generationConfig = { maxOutputTokens: maxTokens, temperature: 0.7 };
+    if (jsonMode) generationConfig.responseMimeType = "application/json";
+    const body = {
+      contents: [{ role: "user", parts: geminiParts }],
+      generationConfig
+    };
+    if (system) body.systemInstruction = { parts: [{ text: system }] };
+    let res;
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body)
+      });
+    } catch (e) {
+      throw new AIError("network", e.message, e);
+    }
+    if (!res.ok) {
+      const raw = await res.text();
+      // Try fallback model if 404 on model
+      if (res.status === 404 && !modelOverride) {
+        return callGemini(key, parts, system, maxTokens, GEMINI_FALLBACK_MODEL, jsonMode);
+      }
+      throw classifyGeminiError(res.status, raw);
+    }
+    const data = await res.json();
+    const cand = data.candidates?.[0];
+    if (!cand) throw new AIError("generic", "Empty Gemini response", JSON.stringify(data));
+    if (cand.finishReason && cand.finishReason !== "STOP" && cand.finishReason !== "MAX_TOKENS" && !cand.content) {
+      throw new AIError("generic", `Gemini blocked: ${cand.finishReason}`, JSON.stringify(data));
+    }
+    return cand.content?.parts?.map(p => p.text).filter(Boolean).join("") || "";
+  }
+
+  function classifyGeminiError(status, raw) {
+    const lower = raw.toLowerCase();
+    if (status === 429 || lower.includes("quota") || lower.includes("resource_exhausted") || lower.includes("exceeded")) {
+      return new AIError("quota", "Gemini quota exceeded", raw);
+    }
+    if (status === 401 || status === 403 || lower.includes("api key not valid") || lower.includes("api_key_invalid") || lower.includes("permission")) {
+      return new AIError("auth", "Invalid Gemini key", raw);
+    }
+    return new AIError("generic", `HTTP ${status}: ${raw.slice(0, 300)}`, raw);
+  }
+
+  async function analyzePhoto(photoId, dataUrl) {
+    try {
+      const base64 = dataUrl.split(",")[1];
+      const langInstruction = lang === "de"
+        ? "Antworte auf Deutsch."
+        : "Respond in English.";
+      const prompt = `Du bist ein Lebensmittel-Erkennungs-Assistent. Liste ALLE essbaren Lebensmittel und Zutaten auf, die du auf diesem Foto siehst (Kühlschrank, Vorratsschrank o.ä.). Gib NUR ein JSON-Array von Strings zurück, keine Erklärung. Beispiel: ["Tomaten","Milch","Käse"]. ${langInstruction} Wenn nichts erkennbar ist, antworte mit [].`;
+      const text = await callAI({
+        parts: [
+          { type: "image", data: base64 },
+          { type: "text", text: prompt }
+        ],
+        maxTokens: 1200,
+        jsonMode: true
+      });
+      const items = parseJsonArray(text);
+      // Add unique items
+      items.forEach(name => {
+        if (!name) return;
+        const clean = name.toString().trim();
+        if (!clean) return;
+        const exists = state.photo.some(p => p.name.toLowerCase() === clean.toLowerCase()) ||
+                       state.manual.some(m => m.toLowerCase() === clean.toLowerCase());
+        if (!exists) state.photo.push({ name: clean, fromImageId: photoId });
+      });
+      const photo = state.photos.find(p => p.id === photoId);
+      if (photo) photo.status = "done";
+      renderThumbs(); renderChips(); renderHint();
+    } catch (e) {
+      console.error(e);
+      const photo = state.photos.find(p => p.id === photoId);
+      if (photo) photo.status = "err";
+      renderThumbs();
+      showAIError(e);
+    }
+  }
+
+  function stripCodeFences(text) {
+    // Strip ```json ... ``` or ``` ... ``` wrappers
+    return text.replace(/^\s*```(?:json|JSON)?\s*\n?/m, "").replace(/```\s*$/m, "").trim();
+  }
+
+  function parseJsonArray(text) {
+    text = stripCodeFences(text);
+    let m = text.match(/\[[\s\S]*\]/);
+    if (m) {
+      try {
+        const arr = JSON.parse(m[0]);
+        if (Array.isArray(arr)) return arr;
+      } catch {}
+    }
+    // Try to repair truncated arrays
+    const repaired = repairJson(text);
+    if (repaired) {
+      try {
+        const arr = JSON.parse(repaired);
+        if (Array.isArray(arr)) return arr;
+      } catch {}
+    }
+    return [];
+  }
+
+  function parseJsonObject(text) {
+    text = stripCodeFences(text);
+    // Try direct parse first (response_mime_type cases)
+    try { return JSON.parse(text); } catch {}
+    // Try to extract balanced object
+    const m = text.match(/\{[\s\S]*\}/);
+    if (m) {
+      try { return JSON.parse(m[0]); } catch {}
+    }
+    // Try to repair truncated JSON
+    const repaired = repairJson(text);
+    if (repaired) {
+      try { return JSON.parse(repaired); } catch {}
+    }
+    return null;
+  }
+
+  /**
+   * Best-effort repair of JSON that was truncated mid-output.
+   * Closes open strings/arrays/objects so the result is parseable.
+   */
+  function repairJson(text) {
+    const start = text.indexOf("{") !== -1
+      ? Math.min(...["{","["].map(c => { const i = text.indexOf(c); return i === -1 ? Infinity : i; }))
+      : text.indexOf("[");
+    if (!isFinite(start) || start < 0) return null;
+    let s = text.slice(start);
+    // Trim trailing comma/whitespace
+    s = s.replace(/,\s*$/, "");
+    let inString = false;
+    let escape = false;
+    const stack = [];
+    for (let i = 0; i < s.length; i++) {
+      const c = s[i];
+      if (escape) { escape = false; continue; }
+      if (c === "\\") { escape = true; continue; }
+      if (c === '"') { inString = !inString; continue; }
+      if (inString) continue;
+      if (c === "{" || c === "[") stack.push(c);
+      else if (c === "}") { if (stack[stack.length-1] === "{") stack.pop(); }
+      else if (c === "]") { if (stack[stack.length-1] === "[") stack.pop(); }
+    }
+    let suffix = "";
+    if (inString) suffix += '"';
+    // Drop dangling comma at the end after closing string
+    s = (s + suffix).replace(/,\s*$/, "");
+    while (stack.length) {
+      const c = stack.pop();
+      suffix = (c === "{" ? "}" : "]");
+      s += suffix;
+    }
+    return s;
+  }
+
+  // ---------- Generate recipe ----------
+  const audienceMap = {
+    de: {
+      toddler: "Kleinkinder (1–3 Jahre): sehr mild, weich, klein geschnitten, ohne harte Stücke, kein Salz/Zucker im Übermass, keine Allergene wie Nüsse",
+      preschool: "Vorschulkinder (4–6 Jahre): mild gewürzt, kindgerecht, optisch ansprechend",
+      school: "Schulkinder (7–10 Jahre): kindgerecht, beliebt bei Kindern, etwas mehr Würze möglich",
+      teen: "Teenager (11–14 Jahre): sättigend, modern, gerne etwas trendy",
+      adult: "Erwachsene: vollwertig, normal gewürzt",
+      family: "ganze Familie (Kinder & Erwachsene): mild bis mittel gewürzt, für alle geeignet"
+    },
+    en: {
+      toddler: "toddlers (1–3 years): very mild, soft, finely cut, no hard pieces, low salt/sugar, avoid common allergens like nuts",
+      preschool: "preschoolers (4–6 years): mildly seasoned, kid-friendly, visually appealing",
+      school: "school kids (7–10 years): kid-friendly, popular with children, slightly more seasoning ok",
+      teen: "teens (11–14 years): filling, modern, slightly trendy is fine",
+      adult: "adults: full-bodied, normal seasoning",
+      family: "the whole family (kids & adults): mild to medium seasoning, suitable for everyone"
+    }
+  };
+
+  function portionsToText() {
+    const mixed = isKidAudience();
+    const kids = state.portions.kids;
+    const adults = state.portions.adults;
+    const ageMap = {
+      de: { toddler: "1–3 Jahre", preschool: "4–6 Jahre", school: "7–10 Jahre", teen: "11–14 Jahre", family: "verschiedene Altersgruppen" },
+      en: { toddler: "1–3 years", preschool: "4–6 years", school: "7–10 years", teen: "11–14 years", family: "mixed ages" }
+    };
+    if (!mixed) {
+      if (lang === "de") return `${adults} ${adults === 1 ? "Person" : "Personen"}`;
+      return `${adults} ${adults === 1 ? "person" : "people"}`;
+    }
+    const age = ageMap[lang][state.audience] || "";
+    const ageSuffix = age ? (lang === "de" ? `, ${age}` : `, ${age}`) : "";
+    const kidsPart = lang === "de"
+      ? `${kids} ${kids === 1 ? "Kind" : "Kinder"}${ageSuffix}`
+      : `${kids} ${kids === 1 ? "child" : "children"}${ageSuffix}`;
+    if (adults <= 0) return kidsPart;
+    const adultsPart = lang === "de"
+      ? `${adults} ${adults === 1 ? "Erwachsene/r" : "Erwachsene"}`
+      : `${adults} ${adults === 1 ? "adult" : "adults"}`;
+    return lang === "de" ? `${kidsPart} und ${adultsPart}` : `${kidsPart} and ${adultsPart}`;
+  }
+
+  const optMap = {
+    de: {
+      temp: { warm: "warmes Gericht", cold: "kaltes Gericht (z.B. Salat, Brote, Wraps)" },
+      effort: { simple: "einfach in der Zubereitung", elaborate: "darf etwas aufwändiger sein, gerne mehrere Komponenten" },
+      time: { quick: "schnell (max. 25 Minuten gesamt)", long: "darf zeitintensiv sein (z.B. Schmoren, Backen, längere Garzeiten)" }
+    },
+    en: {
+      temp: { warm: "warm dish", cold: "cold dish (e.g. salad, sandwiches, wraps)" },
+      effort: { simple: "easy to prepare", elaborate: "may be more elaborate, multiple components welcome" },
+      time: { quick: "quick (max 25 minutes total)", long: "may take longer (braising, baking, longer cooking)" }
+    }
+  };
+
+  async function generateRecipe() {
+    const ingredients = [...state.manual, ...state.photo.map(p => p.name)];
+    if (ingredients.length === 0) {
+      showError(I18N[lang].noIngredientsError);
+      return;
+    }
+    if (!getStoredKey()) {
+      showError({ kind: "auth", title: I18N[lang].errAuthTitle, msg: I18N[lang].noKeyError });
+      apiDetails.open = true;
+      return;
+    }
+
+    const out = document.getElementById("output");
+    out.innerHTML = `<div class="recipe-output"><div class="loader">${I18N[lang].generating}</div></div>`;
+    document.getElementById("generateBtn").disabled = true;
+
+    const audienceText = audienceMap[lang][state.audience];
+    const tempText = optMap[lang].temp[state.options.temp];
+    const effortText = optMap[lang].effort[state.options.effort];
+    const timeText = optMap[lang].time[state.options.time];
+    const portionsText = portionsToText();
+
+    const langInstruction = lang === "de" ? "Antworte komplett auf Deutsch." : "Respond entirely in English.";
+
+    const sys = lang === "de"
+      ? "Du bist ein erfahrener Hobby-Koch und Rezept-Designer. Du erstellst praktikable, alltagstaugliche Rezepte mit den vom Nutzer angegebenen Zutaten. Du darfst gängige Basis-Zutaten (Salz, Pfeffer, Öl, Wasser, Mehl, Butter) ergänzen, falls nötig, und das deutlich machen."
+      : "You are an experienced home cook and recipe designer. You create practical, doable recipes from the ingredients the user provides. You may add common pantry staples (salt, pepper, oil, water, flour, butter) when needed, and call this out clearly.";
+
+    const userPrompt = lang === "de"
+      ? `Erstelle ein Rezept basierend auf folgenden Vorgaben:
+
+VORHANDENE ZUTATEN: ${ingredients.join(", ")}
+
+ZIELPUBLIKUM: ${audienceText}
+PORTIONEN: für ${portionsText} (Mengen entsprechend skalieren)
+ART: ${tempText}
+AUFWAND: ${effortText}
+ZEIT: ${timeText}
+
+Gib das Rezept als JSON zurück (nur das JSON, keine Erklärung drumherum) mit folgendem Schema:
+{
+  "title": "Rezeptname",
+  "subtitle": "kurze, einladende Beschreibung in 1 Satz",
+  "prepTime": "z.B. 10 Min.",
+  "cookTime": "z.B. 15 Min.",
+  "difficulty": "leicht | mittel | schwer",
+  "servings": "z.B. 2 Portionen",
+  "ingredients": ["1 mittelgrosse Tomate", "200 g Pasta", ...],
+  "steps": ["Schritt 1...", "Schritt 2...", ...],
+  "tip": "ein hilfreicher Tipp (1–2 Sätze)"
+}
+
+Nutze möglichst die vorhandenen Zutaten. Wenn du Standard-Vorrat (Salz, Öl etc.) ergänzt, kennzeichne das in der Zutatenliste mit "(Vorrat)". ${langInstruction}`
+      : `Create a recipe with these constraints:
+
+AVAILABLE INGREDIENTS: ${ingredients.join(", ")}
+
+AUDIENCE: ${audienceText}
+SERVINGS: for ${portionsText} (scale ingredient amounts accordingly)
+TYPE: ${tempText}
+EFFORT: ${effortText}
+TIME: ${timeText}
+
+Return the recipe as JSON (only the JSON, no surrounding explanation) using this schema:
+{
+  "title": "Recipe name",
+  "subtitle": "short, inviting one-sentence description",
+  "prepTime": "e.g. 10 min",
+  "cookTime": "e.g. 15 min",
+  "difficulty": "easy | medium | hard",
+  "servings": "e.g. 2 servings",
+  "ingredients": ["1 medium tomato", "200 g pasta", ...],
+  "steps": ["Step 1...", "Step 2...", ...],
+  "tip": "one helpful tip (1–2 sentences)"
+}
+
+Prefer using the listed ingredients. If you add basic pantry items (salt, oil etc.), mark them with "(pantry)" in the ingredient list. ${langInstruction}`;
+
+    try {
+      const text = await callAI({
+        parts: [{ type: "text", text: userPrompt }],
+        system: sys,
+        maxTokens: 4000,
+        jsonMode: true
+      });
+      const recipe = parseJsonObject(text);
+      if (!recipe) {
+        renderRecipeFromText(text);
+      } else {
+        renderRecipe(recipe);
+      }
+    } catch (e) {
+      console.error(e);
+      out.innerHTML = "";
+      showAIError(e);
+    } finally {
+      document.getElementById("generateBtn").disabled = false;
+    }
+  }
+
+  document.getElementById("generateBtn").addEventListener("click", generateRecipe);
+
+  function renderRecipe(r) {
+    const t = I18N[lang];
+    const out = document.getElementById("output");
+    const meta = [];
+    if (r.prepTime) meta.push(`<span class="pill">⏱️ ${t.prepTime}: ${escapeHtml(r.prepTime)}</span>`);
+    if (r.cookTime) meta.push(`<span class="pill">🔥 ${t.cookTime}: ${escapeHtml(r.cookTime)}</span>`);
+    if (r.difficulty) meta.push(`<span class="pill">📊 ${t.difficulty}: ${escapeHtml(r.difficulty)}</span>`);
+    if (r.servings) meta.push(`<span class="pill">🍽️ ${t.servings}: ${escapeHtml(r.servings)}</span>`);
+
+    const ing = (r.ingredients || []).map(i => `<li>${escapeHtml(i)}</li>`).join("");
+    const steps = (r.steps || []).map(s => `<li>${escapeHtml(s)}</li>`).join("");
+
+    out.innerHTML = `
+      <div class="recipe-output">
+        <h2 class="title">${escapeHtml(r.title || "")}</h2>
+        ${r.subtitle ? `<div class="subtitle">${escapeHtml(r.subtitle)}</div>` : ""}
+        ${meta.length ? `<div class="recipe-meta">${meta.join("")}</div>` : ""}
+        <div class="recipe-section">
+          <h3>🥘 ${t.ingredientsLabel}</h3>
+          <ul>${ing}</ul>
+        </div>
+        <div class="recipe-section">
+          <h3>👨‍🍳 ${t.stepsLabel}</h3>
+          <ol>${steps}</ol>
+        </div>
+        ${r.tip ? `<div class="recipe-tip"><strong>💡 ${t.tipLabel}:</strong> ${escapeHtml(r.tip)}</div>` : ""}
+      </div>
+    `;
+    out.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function renderRecipeFromText(text) {
+    const out = document.getElementById("output");
+    out.innerHTML = `<div class="recipe-output"><pre style="white-space:pre-wrap;font-family:inherit;margin:0">${escapeHtml(text)}</pre></div>`;
+  }
+
+  function showError(obj) {
+    // Accept either a string or {title, msg, html, kind}
+    const out = document.getElementById("output");
+    const div = document.createElement("div");
+    div.className = "error-box";
+    if (typeof obj === "string") {
+      div.textContent = obj;
+    } else {
+      let html = "";
+      if (obj.title) html += `<strong>${escapeHtml(obj.title)}</strong>`;
+      if (obj.html) html += obj.html;
+      else if (obj.msg) html += escapeHtml(obj.msg);
+      div.innerHTML = html;
+    }
+    out.prepend(div);
+    if (!obj || (typeof obj !== "string" && !obj.persistent)) {
+      setTimeout(() => div.remove(), 12000);
+    }
+  }
+
+  function showAIError(e) {
+    const t = I18N[lang];
+    const kind = e instanceof AIError ? e.kind : "generic";
+    let title = t.errGenericTitle;
+    let html = "";
+    let persistent = false;
+    if (kind === "credit") {
+      title = t.errCreditTitle;
+      html = `${escapeHtml(t.errCreditMsg)}<br>` +
+        `<a href="https://console.anthropic.com/settings/billing" target="_blank" rel="noopener">${t.errCreditLink} ↗</a><br>` +
+        `<button class="switch-link" onclick="window.__switchProvider('gemini')">${escapeHtml(t.errSwitchToGemini)}</button>`;
+      persistent = true;
+    } else if (kind === "quota") {
+      title = t.errQuotaTitle;
+      html = `${escapeHtml(t.errQuotaMsg)}<br>` +
+        `<button class="switch-link" onclick="window.__switchProvider('claude')">${escapeHtml(t.errSwitchToClaude)}</button>`;
+      persistent = true;
+    } else if (kind === "auth") {
+      title = t.errAuthTitle;
+      html = escapeHtml(t.errAuthMsg);
+      apiDetails.open = true;
+      persistent = true;
+    } else if (kind === "rate") {
+      title = t.errRateTitle;
+      html = escapeHtml(t.errRateMsg);
+    } else if (kind === "network") {
+      title = t.errNetworkTitle;
+      html = escapeHtml(t.errNetworkMsg);
+    } else {
+      html = escapeHtml(e.message || String(e));
+    }
+    showError({ title, html, persistent });
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  // initial render
+  applyLang();
+  renderHint();
+
+  // ---------- Service Worker (PWA) ----------
+  // Only register over HTTPS or localhost — service workers don't run on file:// or plain http.
+  if ("serviceWorker" in navigator &&
+      (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("service-worker.js").catch(err =>
+        console.warn("Service worker registration failed:", err)
+      );
+    });
+  }
+</script>
+</body>
+</html>

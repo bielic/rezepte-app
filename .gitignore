@@ -1,0 +1,4 @@
+# macOS
+.DS_Store
+# Lokale Setup-Skripte (nicht versionieren)
+.autopush/
