@@ -2,3 +2,4 @@
 .DS_Store
 # Lokale Setup-Skripte (nicht versionieren)
 .autopush/
+setup-autopush.command
