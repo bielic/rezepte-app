@@ -196,7 +196,7 @@ echo "${G}${B}║              ✓ Setup erfolgreich                     ║${N}
 echo "${G}${B}╚═══════════════════════════════════════════════════════╝${N}"
 echo ""
 echo "  Repo:    ${REPO_URL:-(siehe github.com/$GH_USER)}"
-echo "  Log:     tail -f /tmp/autopush-rezepte.log"
+echo "  Log:     tail -f $LOG_FILE"
 echo "  Stopp:   launchctl unload \"$PLIST\""
 echo "  Start:   launchctl load   \"$PLIST\""
 echo ""
