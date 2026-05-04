@@ -180,8 +180,8 @@ cat > "$PLIST" <<EOF
   </array>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
-  <key>StandardOutPath</key><string>/tmp/autopush-rezepte.log</string>
-  <key>StandardErrorPath</key><string>/tmp/autopush-rezepte.err</string>
+  <key>StandardOutPath</key><string>$LOG_FILE</string>
+  <key>StandardErrorPath</key><string>$ERR_FILE</string>
 </dict>
 </plist>
 EOF
