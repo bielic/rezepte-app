@@ -5,10 +5,15 @@
 set -u  # Variablen müssen definiert sein
 # Kein 'set -e' damit das Script bei einzelnen Fehlern weiterläuft
 
-REPO_DIR="/Users/christian.bieli/EigeneApps/Rezepte"
+# Auto-Erkennung: das Script verwendet den Ordner, in dem es liegt.
+# Damit funktioniert es in jedem App-Ordner ohne Anpassung.
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+APP_NAME=$(basename "$REPO_DIR" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
 SCRIPTS_DIR="$HOME/.autopush"
-LAUNCH_LABEL="com.christian.autopush-rezepte"
+LAUNCH_LABEL="com.christian.autopush-$APP_NAME"
 PLIST="$HOME/Library/LaunchAgents/$LAUNCH_LABEL.plist"
+LOG_FILE="/tmp/autopush-${APP_NAME}.log"
+ERR_FILE="/tmp/autopush-${APP_NAME}.err"
 
 # Farbige Ausgabe
 G=$'\033[32m'; R=$'\033[31m'; Y=$'\033[33m'; B=$'\033[1m'; N=$'\033[0m'
@@ -21,8 +26,10 @@ die()   { fail "$*"; echo ""; echo "Drücke Enter zum Schliessen..."; read; exit
 
 clear
 echo "${B}╔═══════════════════════════════════════════════════════╗${N}"
-echo "${B}║       Autopush Setup für Rezept-App nach GitHub      ║${N}"
+echo "${B}║          Autopush Setup nach GitHub                  ║${N}"
 echo "${B}╚═══════════════════════════════════════════════════════╝${N}"
+echo "  Ordner: $REPO_DIR"
+echo "  Label:  $LAUNCH_LABEL"
 echo ""
 
 # ── 1. Apple-Silicon vs Intel-Pfade vorbereiten ─────────────────────
