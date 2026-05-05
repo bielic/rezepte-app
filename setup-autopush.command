@@ -101,6 +101,7 @@ GITIGNORE_LINES=(
   ".DS_Store"
   ".autopush/"
   "setup-autopush.command"
+  "toggle-autopush.command"
 )
 touch .gitignore
 for line in "${GITIGNORE_LINES[@]}"; do
