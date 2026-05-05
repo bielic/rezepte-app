@@ -41,6 +41,64 @@ Das Script erkennt **automatisch** den Ordner, in dem es liegt – du kannst das
 
 ---
 
+## Autopush beenden
+
+Drei Stufen, je nachdem wie endgültig:
+
+### Pause (kommt beim nächsten Login automatisch zurück)
+
+```bash
+launchctl unload ~/Library/LaunchAgents/com.christian.autopush-rezepte.plist
+```
+
+Ideal wenn du nur kurz manuell arbeiten willst und Autopush stört. Nach `launchctl load ...` (siehe Tabelle oben) läuft alles wieder.
+
+### Permanent deaktivieren (auch nach Neustart aus)
+
+```bash
+launchctl unload ~/Library/LaunchAgents/com.christian.autopush-rezepte.plist
+rm ~/Library/LaunchAgents/com.christian.autopush-rezepte.plist
+```
+
+Damit ist der Autopush für diese App weg. Der Watcher-Script und die App selbst bleiben erhalten – falls du es dir später anders überlegst, einfach `setup-autopush.command` nochmal doppelklicken.
+
+### Komplett entfernen (LaunchAgent + Watcher-Script + Logs)
+
+```bash
+launchctl unload ~/Library/LaunchAgents/com.christian.autopush-rezepte.plist 2>/dev/null
+rm ~/Library/LaunchAgents/com.christian.autopush-rezepte.plist
+rm -rf ~/.autopush
+rm -f /tmp/autopush-rezepte.log /tmp/autopush-rezepte.err
+```
+
+Das räumt alles auf. **Nicht** entfernt werden:
+
+- Der App-Ordner selbst (`~/EigeneApps/Rezepte`) – deine Dateien bleiben
+- Das GitHub-Repo – läuft weiter, GitHub Pages auch
+- Homebrew, git, gh, fswatch – die Tools bleiben installiert (kannst du behalten, schadet nicht)
+
+### Auch das GitHub-Repo löschen?
+
+Nur falls du auch das Online-Repo nicht mehr willst:
+
+1. github.com → Repo öffnen
+2. Tab **Settings**
+3. Ganz nach unten scrollen: **Danger Zone → Delete this repository**
+4. Repo-Name zur Bestätigung eintippen
+
+Achtung: damit ist die Live-App unter `github.io/...` auch weg. Macht nur Sinn, wenn du wirklich nichts mehr brauchst.
+
+### Für die Beschwerde-App?
+
+Gleiche Befehle, nur **`rezepte`** durch **`beschwerde`** ersetzen:
+
+```bash
+launchctl unload ~/Library/LaunchAgents/com.christian.autopush-beschwerde.plist
+rm ~/Library/LaunchAgents/com.christian.autopush-beschwerde.plist
+```
+
+---
+
 ## Wenn du eine zweite App hast (z.B. Beschwerde-App)
 
 **Setup:**
