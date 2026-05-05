@@ -41,6 +41,34 @@ Das Script erkennt **automatisch** den Ordner, in dem es liegt – du kannst das
 
 ---
 
+## Autopush mit Tastenkürzel an/aus schalten
+
+Im Rezepte-Ordner liegt `toggle-autopush.command`. Doppelklick schaltet Autopush um (an → aus → an → ...) und zeigt eine kurze macOS-Benachrichtigung.
+
+Damit das per Tastenkürzel geht, einmal in der Shortcuts-App einrichten:
+
+1. **Shortcuts** öffnen (Programme → Shortcuts, oder Cmd+Leertaste „Shortcuts")
+2. Oben links auf **+** für neuen Shortcut
+3. Rechts in der Aktions-Suche „Shell-Skript" tippen → **„Shell-Skript ausführen"** ins Fenster ziehen
+4. In das grosse Textfeld einfügen:
+
+   ```
+   "$HOME/EigeneApps/Rezepte/toggle-autopush.command"
+   ```
+
+5. Über dem Skript-Feld bei **Shell** auf `bash` umstellen (falls nicht schon)
+6. Den Shortcut oben benennen, z.B. **Autopush Rezepte**
+7. Rechts oben auf das **(i)** klicken → Häkchen bei **„In Menüleiste anheften"** kann nützlich sein
+8. Auf das **Tastatur-Symbol** klicken (oben rechts) → **Tastaturkürzel zuweisen** → gewünschte Tasten drücken (z.B. ⌃⌥⇧R für „Rezepte")
+
+Ab jetzt: ⌃⌥⇧R drücken → Benachrichtigung „Autopush PAUSIERT" oder „AKTIV" erscheint, je nach aktuellem Zustand.
+
+**Für die Beschwerde-App:** zweiten Shortcut anlegen mit Pfad `"$HOME/EigeneApps/Beschwerde/toggle-autopush.command"` und einer anderen Tastenkombination (z.B. ⌃⌥⇧B).
+
+**Falls Shortcuts kein Tastenkürzel-Feld zeigt** (ältere macOS-Versionen): Systemeinstellungen → Tastatur → Tastaturkurzbefehle → Dienste → den erstellten Shortcut suchen und Hotkey zuweisen.
+
+---
+
 ## Autopush beenden
 
 Drei Stufen, je nachdem wie endgültig:
