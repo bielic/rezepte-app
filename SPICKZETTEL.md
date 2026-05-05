@@ -191,14 +191,8 @@ launchctl load ~/Library/LaunchAgents/com.christian.autopush-rezepte.plist
 **Du hast den App-Ordner verschoben**
 → Setup neu ausführen. Doppelklick `setup-autopush.command` im neuen Pfad.
 
-**Du willst alles wieder loswerden für eine App**
-
-```bash
-launchctl unload ~/Library/LaunchAgents/com.christian.autopush-rezepte.plist
-rm ~/Library/LaunchAgents/com.christian.autopush-rezepte.plist
-```
-
-(Das Repo auf GitHub bleibt – das löschst du dort manuell.)
+**Du willst Autopush beenden**
+→ Siehe Sektion „Autopush beenden" oben (drei Stufen: Pause / Permanent / Komplett).
 
 ---
 
